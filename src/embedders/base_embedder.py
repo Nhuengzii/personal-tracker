@@ -1,12 +1,13 @@
 from cv2.typing import MatLike
 import torch
-from src.models.osnet import osnet_x1_0
+from src.models.osnet_ain import osnet_ain_x1_0
 import numpy as np
 import cv2
 
+
 class BaseEmbedder:
     def __init__(self) -> None:
-        self.model = osnet_x1_0(pretrained=True)
+        self.model = osnet_ain_x1_0(pretrained=True)
         self.model.eval()
         self.image_size = (128, 256)
     
