@@ -10,8 +10,31 @@ class HandTriggerResult:
         self.mp_draw = mp.solutions.drawing_utils
         self.tiplist = [4, 8, 12, 16, 20]
         self.total_fingers = 0
-        self.flag_is_start = False
+        self.flag_start_stop = False
         self.time_start = 0
+        self.is_stop = False
+    
+    def _check_stop(self, time_to_stop=3) -> bool:
+            duration_time = time.time() - self.time_start
+            #print(duration_time)
+            if self.total_fingers >= 4:
+                print(time.time() - self.time_start)
+                print("is finger >= 4")
+                if not self.flag_start_stop:
+                    print("Start condition met: Starting process.")
+                    self.time_start = time.time()
+                    self.flag_start_stop = True
+                
+
+                elif duration_time >= time_to_stop:
+                    print("Stop condition met: Stopping process.")
+                    self.is_stop = not self.is_stop
+                    self.flag_start_stop = False
+
+            elif self.total_fingers < 4 and self.flag_start_stop:    
+                self.flag_start_stop = False
+            
+            return self.is_stop
 
     def _find_hands(self, cv_img: MatLike, draw=True):
         img_RGB = cv.cvtColor(cv_img, cv.COLOR_BGR2RGB)
@@ -33,34 +56,32 @@ class HandTriggerResult:
                         fingers.append(0)
 
                 self.total_fingers = fingers.count(1)
-        return cv_img
+                self._check_stop()
+        return cv_img, self.is_stop
+    
+    def update_is_stop(self):
+        return self.is_stop
 
     # not working
-    def check_update_stop(self) -> bool:
-        if self.total_fingers >= 4:
-            if not self.flag_is_start:
-                self.time_start = time.time()
-                self.flag_is_start = True
-            elif time.time() - self.time_start > 5:
-                self.flag_is_start = False
-                return True
-        else:
-            self.flag_is_start = False
+    
+    
+    
 
-        return False
-
+    
+    
+    
 my_hand = HandTriggerResult()
 cap = cv.VideoCapture(0)
 
-# while True:
-#     success, img = cap.read()
-#     img = my_hand._find_hands(img)
-#     check = my_hand.check_update_stop()
+while True:
+    success, img = cap.read()
+    img, is_stop = my_hand._find_hands(img)
+    print(is_stop)
 
-#     cv.imshow('img', img)
+    cv.imshow('img', img)
 
-#     if cv.waitKey(1) == ord('q'):
-#         break
+    if cv.waitKey(1) == ord('q'):
+        break
 
-# cap.release()
-# cv.destroyAllWindows()
+cap.release()
+cv.destroyAllWindows()
