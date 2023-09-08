@@ -35,4 +35,58 @@ def get_target_from_camera(cap) -> tuple[MatLike, tuple[int, int, int, int]]:
     soi = (int(soi[0]), int(soi[1]), int(soi[0]) + int(soi[2]), int(soi[1]) + int(soi[3]))
     cv2.destroyAllWindows()
     return target_frame, soi
+def rec_check(recs: list[tuple[int, int, int, int]], index, threshold):
+    def cal_area (target, compare):
+        x_overlap = 0
+        y_overlap = 0
+
+        tx_start = target[0][0]
+        tx_end = target[1][0]
+        cx_start = compare[0][0]
+        cx_end = compare[1][0]
+
+        ty_start = target[0][1]
+        ty_end = target[1][1]
+        cy_start = compare[0][1]
+        cy_end = compare[1][1]
+
+        if cx_start <= tx_end and cx_end >= tx_end:
+            x_overlap = tx_end - cx_start
+        elif cx_end >= tx_start and cx_start <= tx_start:
+            x_overlap = cx_end - tx_start
+        elif cx_start >= tx_start and cx_end <= tx_end:
+            x_overlap = cx_end - cx_start
+        elif cx_start <= tx_start and cx_end >= tx_end:
+            x_overlap = tx_end - tx_start
+
+        if cy_start <= ty_end and cy_end >= ty_end:
+            y_overlap = ty_end - cy_start
+        elif cy_end >= ty_start and cy_start <= ty_start:
+            y_overlap = cy_end - ty_start
+        elif cy_start >= ty_start and cy_end <= ty_end:
+            y_overlap = cy_end - cy_start
+        elif cy_start <= ty_start and cy_end >= ty_end:
+            y_overlap = ty_end - ty_start
+
+        return x_overlap * y_overlap
     
+    recAll = []
+    area = 0
+    percent_area = 0
+
+    for r in recs:
+        recAll.append([(r[0], r[1]), (r[2], r[3])])
+
+    size_target = cal_area(recAll[index], recAll[index])
+
+    for i in range(0, len(recAll)):
+        if i == index:
+            pass
+        else:
+            area = cal_area(recAll[index], recAll[i])
+            percent_area = area/size_target * 100
+
+        if (percent_area >= threshold):
+            return False
+
+    return True

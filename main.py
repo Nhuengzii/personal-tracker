@@ -7,12 +7,12 @@ from src.embedders import BaseEmbedder
 from src.personal_trackers import BasePersonalTracker
 
 
-def main(source: str | int):
+def main(source: str | int, args):
     cap = cv2.VideoCapture(source)
 
     detector = BaseDetector()
     embedder = BaseEmbedder()
-    tracker = BasePersonalTracker(detector, embedder)
+    tracker = BasePersonalTracker(detector, embedder, auto_add_target_features=args.auto_add_target_features, auto_add_target_features_interval=args.auto_add_target_features_interval)
 
     def get_target_from_camera(cap) -> tuple[MatLike, tuple[int, int, int, int]]:
         target_frame = None
@@ -37,12 +37,12 @@ def main(source: str | int):
     target_frame, soi = get_target_from_camera(cap)
     tracker.add_target_features(target_frame, soi)
     print(f"Target added current size {len(tracker._target_features_pool)}")
-
     while True:
         ret, frame = cap.read()
         if not ret:
             break
         track_result = tracker.track(frame, draw_result=True)
+        cv2.imshow("target", tracker.show_target_images())
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -53,10 +53,12 @@ def main(source: str | int):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=str, default=0, help="source of video path or camera index")
+    parser.add_argument("--auto_add_target_features", type=bool, default=False, help="auto add target features")
+    parser.add_argument("--auto_add_target_features_interval", type=int, default=60, help="auto add target features interval")
     args = parser.parse_args()
     if args.source.isdigit():
         vid_source = int(args.source)
     else:
         vid_source = args.source
-    main(source=vid_source)
+    main(source=vid_source, args=args)
     
