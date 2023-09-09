@@ -21,3 +21,22 @@ class CosineSimilarity:
         for i in target_features:
             ret.append(torch.cosine_similarity(i, query_features))
         return torch.stack(ret)
+
+    @torch.no_grad()
+    def rank(self, target_features: torch.Tensor, query_features: torch.Tensor):
+        """
+        Rank the query features based on the cosine similarity to the target features.
+
+        Args:
+            target_features (torch.Tensor): target features with shape (num_target_samples, feature_dim)
+            query_features (torch.Tensor): query features with shape (num_query_samples, feature_dim)
+        
+        Returns:
+            list[int]: list of indices that sort the query features based on the cosine similarity to the target features
+            ordered from most similar to least similar
+        """
+
+        similarity = self.compute_similarity(target_features, query_features)
+        mean_similarity = torch.mean(similarity.T, dim=1)
+        sorted_similarity, indices = torch.sort(mean_similarity, descending=True)
+        return indices.tolist()
