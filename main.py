@@ -5,7 +5,7 @@ import argparse
 from src.detectors import BaseDetector
 from src.embedders import BaseEmbedder
 from src.personal_trackers import BasePersonalTracker
-
+from src.extentions.hand_triger import HandTriggerResult
 
 def main(source: str | int, args):
     cap = cv2.VideoCapture(source)
@@ -13,6 +13,7 @@ def main(source: str | int, args):
     detector = BaseDetector()
     embedder = BaseEmbedder()
     tracker = BasePersonalTracker(detector, embedder, auto_add_target_features=args.auto_add_target_features, auto_add_target_features_interval=args.auto_add_target_features_interval)
+    hand_trigger = HandTriggerResult()
 
     def get_target_from_camera(cap) -> tuple[MatLike, tuple[int, int, int, int]]:
         target_frame = None
@@ -43,6 +44,19 @@ def main(source: str | int, args):
             break
         track_result = tracker.track(frame, draw_result=True)
         cv2.imshow("target", tracker.show_target_images())
+        
+        if track_result:
+            crop_target =  frame[
+                track_result.detect_result.bboxes[0][1]:track_result.detect_result.bboxes[0][3],
+                track_result.detect_result.bboxes[0][0]:track_result.detect_result.bboxes[0][2]
+                ]
+            cv2.imshow("crop_target", crop_target)
+        hand_target, is_stop = hand_trigger.find_hands(crop_target)
+        if is_stop:
+            print("Stop")
+        else:
+            print("Not Stop")
+        
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
