@@ -29,7 +29,7 @@ class BasePersonalTracker():
         target_idx = self._max_average_cosine_distance(detected_features)
         if draw_result:
             self.draw_result(frame, TrackResults(detect_result, target_idx))
-        if self._last_auto_add_target_features_time and (datetime.now() - self._last_auto_add_target_features_time).total_seconds() > self.auto_add_target_features_interval:
+        if self.auto_add_target_features and self._last_auto_add_target_features_time and (datetime.now() - self._last_auto_add_target_features_time).total_seconds() > self.auto_add_target_features_interval:
             if self._should_add_target_features(TrackResults(detect_result, target_idx)):
                 self.add_target_features(frame, detect_result.bboxes[target_idx])
                 self._last_auto_add_target_features_time = datetime.now()
