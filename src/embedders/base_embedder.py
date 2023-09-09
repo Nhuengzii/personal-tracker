@@ -2,6 +2,7 @@ from cv2.typing import MatLike
 import torch
 from src.embedders.available_embedder_models import AvailableEmbedderModels
 from src.models import osnet_ain, osnet
+import torchvision
 import numpy as np
 import cv2
 
@@ -14,6 +15,10 @@ class BaseEmbedder:
             self.model = osnet.osnet_x1_0(pretrained=True)
         self.model.eval()
         self.image_size = (128, 256)
+        self.preprosessor = torchvision.transforms.Normalize(
+            mean=np.array([0.485, 0.456, 0.406]),
+            std=np.array([0.229, 0.224, 0.225])
+        )
     
     @torch.no_grad()
     def extract_feature(self, croped_image: MatLike) -> torch.Tensor:
