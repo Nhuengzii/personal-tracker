@@ -4,15 +4,18 @@ import argparse
 
 from src.detectors import BaseDetector
 from src.embedders import BaseEmbedder
+from src.metrics.base_metric import MetricType
 from src.personal_trackers import BasePersonalTracker
 
 
 def main(source: str | int, args):
     cap = cv2.VideoCapture(source)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
     detector = BaseDetector()
     embedder = BaseEmbedder()
-    tracker = BasePersonalTracker(detector, embedder, auto_add_target_features=args.auto_add_target_features, auto_add_target_features_interval=args.auto_add_target_features_interval)
+    tracker = BasePersonalTracker(detector, embedder, MetricType.MAHALANOBIS_DISTANCE, auto_add_target_features=args.auto_add_target_features, auto_add_target_features_interval=args.auto_add_target_features_interval)
 
     def get_target_from_camera(cap) -> tuple[MatLike, tuple[int, int, int, int]]:
         target_frame = None
@@ -30,7 +33,6 @@ def main(source: str | int, args):
         soi = (int(soi[0]), int(soi[1]), int(soi[0]) + int(soi[2]), int(soi[1]) + int(soi[3]))
         cv2.destroyAllWindows()
         return target_frame, soi
-
     target_frame, soi = get_target_from_camera(cap)
     tracker.add_target_features(target_frame, soi)
     print(f"Target added current size {len(tracker._target_features_pool)}")
