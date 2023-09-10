@@ -18,8 +18,8 @@ class EuclideanDistance():
         return torch.cdist(target_features, query_features, p=2)
 
     @torch.no_grad()
-    def rank(self, target_features: torch.Tensor, query_features: torch.Tensor) -> list[int]:
+    def rank(self, target_features: torch.Tensor, query_features: torch.Tensor) -> tuple[list[int], list[float]]:
         dist = self.compute_distance(target_features, query_features)
         mean_dist = torch.mean(dist.T, dim=1)
         sorted_dist, indices = torch.sort(mean_dist)
-        return indices.tolist()
+        return indices.tolist(), sorted_dist.tolist()

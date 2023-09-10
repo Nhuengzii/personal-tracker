@@ -23,7 +23,7 @@ class CosineSimilarity:
         return torch.stack(ret)
 
     @torch.no_grad()
-    def rank(self, target_features: torch.Tensor, query_features: torch.Tensor):
+    def rank(self, target_features: torch.Tensor, query_features: torch.Tensor) -> tuple[list[int], list[float]]:
         """
         Rank the query features based on the cosine similarity to the target features.
 
@@ -39,4 +39,4 @@ class CosineSimilarity:
         similarity = self.compute_similarity(target_features, query_features)
         mean_similarity = torch.mean(similarity.T, dim=1)
         sorted_similarity, indices = torch.sort(mean_similarity, descending=True)
-        return indices.tolist()
+        return indices.tolist(), sorted_similarity.tolist()

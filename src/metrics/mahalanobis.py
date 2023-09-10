@@ -32,7 +32,7 @@ class MahalanobisDistance():
         return dist
     
     @torch.no_grad()
-    def rank(self, target_features: torch.Tensor, query_features: torch.Tensor) -> list[int]:
+    def rank(self, target_features: torch.Tensor, query_features: torch.Tensor) -> tuple[list[int], list[float]]:
         """
         Rank the query features based on the Mahalanobis distance to the target features.
         Args:
@@ -46,4 +46,4 @@ class MahalanobisDistance():
         dist = self.compute_distances(target_features, query_features)
         mean_dist = torch.mean(dist, dim=1)
         sorted_dist, indices = torch.sort(mean_dist)
-        return indices.tolist()
+        return indices.tolist(), sorted_dist.tolist()

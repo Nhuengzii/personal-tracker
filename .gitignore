@@ -160,3 +160,5 @@ cython_debug/
 #.idea/
 
 yolov*
+datasets/*
+validates/validate_sets/*
