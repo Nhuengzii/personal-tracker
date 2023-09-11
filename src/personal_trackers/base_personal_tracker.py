@@ -79,4 +79,23 @@ class BasePersonalTracker():
         # concat images in horizontal
         target_images = cv2.hconcat(target_images)
         return target_images
+    
+    def get_target_from_camera(self, cap: cv2.VideoCapture, num_target: int = 1) -> list[tuple[MatLike, tuple[int, int, int, int]]]:
+        targets = []
+        _count = 0
+        while _count < num_target:
+            ret, frame = cap.read()
+            if not ret:
+                print("Can't receive frame (stream end?). continue ...")
+                continue
+            cv2.imshow("target", frame)
+            if cv2.waitKey(20) & 0xFF == ord('s'):
+                target_frame = frame
+                soi = cv2.selectROI("target", target_frame) 
+                # convert to x1, y1, x2, y2
+                soi = (int(soi[0]), int(soi[1]), int(soi[0]) + int(soi[2]), int(soi[1]) + int(soi[3]))
+                targets.append((target_frame, soi))
+                _count += 1
+        cv2.destroyAllWindows()
+        return targets
         
