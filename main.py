@@ -6,6 +6,7 @@ from src.detectors import BaseDetector
 from src.embedders import BaseEmbedder
 from src.metrics.base_metric import MetricType
 from src.personal_trackers import BasePersonalTracker
+from src.personal_trackers.kalman_personal_tracker import KalmanPersonalTracker
 
 
 def main(source: str | int, args):
@@ -15,36 +16,18 @@ def main(source: str | int, args):
 
     detector = BaseDetector()
     embedder = BaseEmbedder()
-    tracker = BasePersonalTracker(detector, embedder, MetricType.MAHALANOBIS_DISTANCE, auto_add_target_features=args.auto_add_target_features, auto_add_target_features_interval=args.auto_add_target_features_interval)
+    tracker = BasePersonalTracker(detector, embedder, MetricType.COSINE_SIMILARITY, auto_add_target_features=args.auto_add_target_features, auto_add_target_features_interval=args.auto_add_target_features_interval)
+    targets = tracker.get_target_from_camera(cap, 3)
+    for target in targets:
+        tracker.add_target_features(target[0], target[1])
 
-    def get_target_from_camera(cap) -> tuple[MatLike, tuple[int, int, int, int]]:
-        target_frame = None
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("Can't receive frame (stream end?). continue ...")
-                continue
-            cv2.imshow("target", frame)
-            if cv2.waitKey(1) & 0xFF == ord('s'):
-                target_frame = frame
-                break
-        soi = cv2.selectROI("target", target_frame) 
-        # convert to x1, y1, x2, y2
-        soi = (int(soi[0]), int(soi[1]), int(soi[0]) + int(soi[2]), int(soi[1]) + int(soi[3]))
-        cv2.destroyAllWindows()
-        return target_frame, soi
-    target_frame, soi = get_target_from_camera(cap)
-    tracker.add_target_features(target_frame, soi)
-    print(f"Target added current size {len(tracker._target_features_pool)}")
-    target_frame, soi = get_target_from_camera(cap)
-    tracker.add_target_features(target_frame, soi)
-    print(f"Target added current size {len(tracker._target_features_pool)}")
+    cv2.imshow("target", tracker.show_target_images())
+    print(f"Start tracking with {len(tracker._target_features_pool)} targets")
     while True:
         ret, frame = cap.read()
         if not ret:
             break
         track_result = tracker.track(frame, draw_result=True)
-        cv2.imshow("target", tracker.show_target_images())
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
