@@ -14,6 +14,19 @@ class TrackResults:
         self.target_idx = target_idx
         self.ranks = ranks
         self.sorted_scores = sorted_scores
+        self.overwrited = False
+        self.overwrited_bbox: tuple[int, int, int, int] | None = None
+
+    @property
+    def target_bbox(self) -> tuple[int, int, int, int]:
+        if self.overwrited:
+            assert self.overwrited_bbox is not None
+            return self.overwrited_bbox
+        return self.detect_result.bboxes[self.target_idx]
+
+    def overwrite(self, bbox: tuple[int, int, int, int] ) -> None:
+        self.is_desprecated = True
+        self.overwrited_bbox = bbox
 
 class BasePersonalTracker():
     def __init__(self, detector: BaseDetector, embedder: BaseEmbedder, metric: MetricType, auto_add_target_features: bool = False, auto_add_target_features_interval: int = 60) -> None:
@@ -35,7 +48,7 @@ class BasePersonalTracker():
         target_features: list[torch.Tensor] = []
         for _, features in self._target_features_pool:
             target_features.append(features.tolist()) # type: ignore
-        ranks, sorted_scores = self.metric.rank(torch.tensor(target_features), detected_features)
+        ranks, sorted_scores = self.metric.rank(torch.cat(target_features), detected_features)
             
         target_idx = ranks[0]
         if draw_result:
