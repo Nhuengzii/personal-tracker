@@ -1,6 +1,7 @@
 import torch
 from enum import Enum
 from src.metrics.cosine_similarity import CosineSimilarity
+from src.metrics.csem import CSEMMetric
 from src.metrics.euclidian import EuclideanDistance
 from src.metrics.mahalanobis import MahalanobisDistance
 from src.metrics.mahalanobis_kalman import MahalanobisKalmanDistance
@@ -10,6 +11,7 @@ class MetricType(Enum):
     EUCLIDEAN_DISTANCE = 2
     MAHALANOBIS_DISTANCE = 3
     MAHALANOBIS_KALMAN_DISTANCE = 4
+    CSEM_DISTANCE = 5
 
 class BaseMetric:
     def __init__(self, metric: MetricType = MetricType.COSINE_SIMILARITY ) -> None:
@@ -22,6 +24,8 @@ class BaseMetric:
             self._metric = MahalanobisDistance()
         elif metric == MetricType.MAHALANOBIS_KALMAN_DISTANCE:
             self._metric = MahalanobisKalmanDistance()
+        elif metric == MetricType.CSEM_DISTANCE:
+            self._metric = CSEMMetric()
         else:
             raise NotImplementedError("Metric not implemented")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -31,4 +35,3 @@ class BaseMetric:
             assert self.metric_type == MetricType.MAHALANOBIS_KALMAN_DISTANCE
             return self._metric.rank(target_features, query_features, kalman_distances) # type: ignore
         return self._metric.rank(target_features, query_features)
-

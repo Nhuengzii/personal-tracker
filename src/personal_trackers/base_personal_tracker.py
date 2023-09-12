@@ -48,7 +48,7 @@ class BasePersonalTracker():
         target_features: list[torch.Tensor] = []
         for _, features in self._target_features_pool:
             target_features.append(features.tolist()) # type: ignore
-        ranks, sorted_scores = self.metric.rank(torch.cat(target_features), detected_features)
+        ranks, sorted_scores = self.metric.rank(torch.tensor(target_features), detected_features)
             
         target_idx = ranks[0]
         if draw_result:
@@ -111,4 +111,28 @@ class BasePersonalTracker():
                 _count += 1
         cv2.destroyAllWindows()
         return targets
+
+    def get_repetitive_target_from_camera(self, cap: cv2.VideoCapture, sec: int) -> list[tuple[MatLike, tuple[int, int, int, int]]]:
+        targets = []
+        start = datetime.now()
+        while True:
+            if (datetime.now() - start).total_seconds() > sec:
+                break
+            ret, frame = cap.read()
+            if not ret:
+                print("Can't receive frame (stream end?). continue ...")
+                continue
+            cv2.imshow("target", frame)
+            target_frame = frame
+            detected = self.detector.detect(target_frame)
+            if not detected:
+                print("Can't detect any object. continue ...")
+                continue
+            soi = detected.bboxes[0]
+            # convert to x1, y1, x2, y2
+            targets.append((target_frame, soi))
+            cv2.waitKey(25)
+        cv2.destroyAllWindows()
+        return targets
+        
         

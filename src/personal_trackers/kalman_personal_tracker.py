@@ -98,7 +98,7 @@ class KalmanPersonalTracker(BasePersonalTracker):
 
         for idx, bbox in enumerate(detect_result.bboxes):
             if idx == target_idx:
-                draw_bbox(frame, bbox, (0, 255, 0), "Target") 
+                draw_bbox(frame, bbox, (0, 255, 0), f"Target {track_result.sorted_scores[target_idx]}") 
             else:
                 draw_bbox(frame, bbox, (0, 0, 255))
         if self.trust_kalman:
