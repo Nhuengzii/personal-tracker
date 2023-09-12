@@ -16,6 +16,7 @@ def main(source: str | int, args):
 
     detector = BaseDetector()
     embedder = BaseEmbedder()
+    hand_trigger = HandTriggerResult()
     tracker = BasePersonalTracker(detector, embedder, MetricType.COSINE_SIMILARITY, auto_add_target_features=args.auto_add_target_features, auto_add_target_features_interval=args.auto_add_target_features_interval)
     targets = tracker.get_target_from_camera(cap, 3)
     for target in targets:
