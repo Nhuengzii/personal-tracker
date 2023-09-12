@@ -1,16 +1,13 @@
 import cv2
 from cv2.typing import MatLike
 import argparse
-
 from src.detectors import BaseDetector
 from src.embedders import BaseEmbedder
 from src.embedders.available_embedder_models import AvailableEmbedderModels
-from src.embedders.biased_embedder import BiasedEmbedder
 from src.metrics.base_metric import MetricType
-from src.personal_trackers import BasePersonalTracker
-from src.personal_trackers.kalman_personal_tracker import KalmanPersonalTracker
-import glob
 import os
+from src.personal_trackers.me_personal_tracker import MEPersonalTracker
+from src.personal_trackers.personal_tracker import PersonalTracker
 
 
 def main(source: str | int, args):
@@ -20,18 +17,28 @@ def main(source: str | int, args):
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
     detector = BaseDetector()
-    embedder1 = BiasedEmbedder(model=AvailableEmbedderModels.OSNET_AIN_X1_0)
+    embedder1 = BaseEmbedder(model=AvailableEmbedderModels.OSNET_AIN_X1_0)
     embedder2 = BaseEmbedder(model=AvailableEmbedderModels.OSNET_AIN_X1_0)
-    tracker1 = KalmanPersonalTracker(detector, embedder1, MetricType.MAHALANOBIS_KALMAN_DISTANCE) 
-    tracker2 = KalmanPersonalTracker(detector, embedder2, MetricType.MAHALANOBIS_DISTANCE)
+    embedders = [BaseEmbedder(AvailableEmbedderModels.OSNET_X1_0), BaseEmbedder(AvailableEmbedderModels.OSNET_AIN_X1_0)]
+    embedders.append(BaseEmbedder(AvailableEmbedderModels.OSNET_X0_75))
+    embedders.append(BaseEmbedder(AvailableEmbedderModels.OSNET_AIN_X0_75))
+    tracker1 = MEPersonalTracker(detector, embedders, MetricType.COSINE_SIMILARITY)
+    # tracker1 = PersonalTracker(detector, embedder1, MetricType.CSEM_DISTANCE) 
+    tracker2 = PersonalTracker(detector, embedder2, MetricType.COSINE_SIMILARITY)
     cur = os.getcwd()
-    for target in glob.glob(f"{cur}/validates/validate_sets/{args.set}/target_images/*.png"):
-        print(target)
-        croped_image = cv2.imread(target)
-        full_bbox = (0, 0, croped_image.shape[1], croped_image.shape[0])
-        tracker1.add_target_features(croped_image, full_bbox)
-        tracker2.add_target_features(croped_image, full_bbox)
-    print(f"Target added current size {len(tracker1._target_features_pool)}")
+    targets = tracker1.get_target_from_camera(cap, 3)
+    for target in targets:
+        tracker1.add_target_features(target[0], target[1])
+        tracker2.add_target_features(target[0], target[1])
+    # for target in glob.glob(f"{cur}/validates/validate_sets/{args.set}/target_images/*.png"):
+    #     print(target)
+    #     croped_image = cv2.imread(target)
+    #     full_bbox = (0, 0, croped_image.shape[1], croped_image.shape[0])
+    #     tracker1.add_target_features(croped_image, full_bbox)
+    #     tracker2.add_target_features(croped_image, full_bbox)
+    print(f"Tracker1 Start tracking with {len(tracker1._target_features_pool)} targets")
+    print(f"Tracker2 Start tracking with {len(tracker2._target_features_pool)} targets")
+    
     
     while True:
         ret, frame = cap.read()
