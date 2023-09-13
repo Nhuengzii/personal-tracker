@@ -1,4 +1,5 @@
 import cv2
+import pafy
 from cv2.typing import MatLike
 import argparse
 from src.detectors import BaseDetector
@@ -17,18 +18,17 @@ def main(source: str | int, args):
     cap = cv2.VideoCapture(source)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-
     detector = BaseDetector()
     embedder1 = BaseEmbedder(model=AvailableEmbedderModels.OSNET_AIN_X1_0)
     embedder2 = BaseEmbedder(model=AvailableEmbedderModels.OSNET_AIN_X1_0)
     # embedders = [BaseEmbedder(AvailableEmbedderModels.OSNET_X1_0), BaseEmbedder(AvailableEmbedderModels.OSNET_AIN_X1_0)]
     # embedders.append(BaseEmbedder(AvailableEmbedderModels.OSNET_X0_75))
     # embedders.append(BaseEmbedder(AvailableEmbedderModels.OSNET_AIN_X0_75))
-    tracker1 = SIFTPersonalTracker(SegmentDetector(), embedder1, MetricType.COSINE_SIMILARITY)
+    tracker1 = SIFTPersonalTracker(SegmentDetector(), embedder1, MetricType.COSINE_SIMILARITY).remove_query_background(False).use_embedder()
     # tracker1 = PersonalTracker(detector, embedder1, MetricType.CSEM_DISTANCE) 
-    tracker2 = PersonalTracker(detector, embedder2, MetricType.CSEM_DISTANCE)
+    tracker2 = SIFTPersonalTracker(SegmentDetector(), embedder2, MetricType.COSINE_SIMILARITY)
     cur = os.getcwd()
-    targets = tracker1.get_target_from_camera(cap, 8)
+    targets = tracker1.get_repetitive_target_from_camera(cap, 5)
     for target in targets:
         tracker1.add_target_features(target[0], target[1])
         tracker2.add_target_features(target[0], target[1])
@@ -48,8 +48,12 @@ def main(source: str | int, args):
         frame2 = frame.copy()
         if not ret:
             break
-        track_result = tracker1.track(frame1, draw_result=True)
-        track_result = tracker2.track(frame2, draw_result=True)
+        try:
+            track_result = tracker1.track(frame1, draw_result=True)
+            track_result = tracker2.track(frame2, draw_result=True)
+        except:
+            print("Error while tracking. continue ...")
+            continue
         concat_frame = cv2.hconcat([frame1, frame2])
         concat_frame = cv2.resize(concat_frame, (1280, 720))
         cv2.imshow("target", tracker2.show_target_images())

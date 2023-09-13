@@ -20,6 +20,8 @@ class SIFTPersonalTracker(PersonalTracker):
         self._last_sift_features = None
         self._target_features_pool: list[tuple[MatLike, torch.Tensor, Any]] = []
         self._max_matches_threshold: int | None = None
+        self._use_umbedder = False
+        self._remove_query_background = False
 
     def _get_keypoints(self, img: MatLike):
         return self.sift.detectAndCompute(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), None)
@@ -38,65 +40,71 @@ class SIFTPersonalTracker(PersonalTracker):
             unsorted_scores[rank] = sorted_scores[idx]
         return unsorted_scores
 
-    def _algorithm(self, frame: MatLike) -> TrackResults | None:
-        raw_result =  super()._algorithm(frame)
-        if raw_result is None:
-            return None
-        # if len(raw_result.detect_result.bboxes) == 1:
-        #     return raw_result
-        if self._last_sift_features is None:
-            croped = raw_result.detect_result.get_crop_and_remove_background(raw_result.target_idx )
-            self._last_sift_features = self._get_keypoints(croped)
-            return raw_result
+    def use_embedder(self, use: bool = True):
+        self._use_umbedder = use
+        return self
+
+    def remove_query_background(self, remove: bool = True):
+        self._remove_query_background = remove
+        return self
+
+    def _algorithm(self, frame: MatLike) -> TrackResults:
+        if self._use_umbedder:
+            embedder_result = super()._algorithm(frame)
+        else:
+            detected_result = self.detector.detect(frame)
+            embedder_result = TrackResults(detected_result)
+        if embedder_result.detect_result is None:
+            return TrackResults()
+        detected_result = embedder_result.detect_result
         q_keypoints = []
 
         # Sift ranking
-        for idx in range(len(raw_result.detect_result.bboxes)):
-            croped = raw_result.detect_result.get_crop_and_remove_background(idx)
+        for idx in range(len(detected_result.bboxes)):
+            croped = detected_result.get_crop_and_remove_background(idx, self._remove_query_background)
             q_keypoints.append(self._get_keypoints(croped))
-        matches = self._get_matches(self._last_sift_features, q_keypoints)
+        matches = [0 for _ in range(len(q_keypoints))]
         for idx in range(len(self._target_features_pool)):
             ms = self._get_matches(self._target_features_pool[idx][2], q_keypoints)
             assert len(ms) == len(matches)
             for i in range(len(ms)):
                 matches[i] += ms[i]
-            
+        if self._max_matches_threshold is None:
+            self._max_matches_threshold = int(max(matches) * 0.8)
+        # if max(matches) < self._max_matches_threshold:
+        #     print(f"max matches: {max(matches)} is below threshold: {self._max_matches_threshold}")
+        #     return None
+        if self._last_sift_features is not None:
+            ms = self._get_matches(self._last_sift_features, q_keypoints)
+            assert len(ms) == len(matches)
+            for i in range(len(ms)):
+                matches[i] += ms[i]
+        print(matches)
+
         assert all([match > 0 for match in matches]), "match should be greater than 0"
-        # inv_matches = [1 / match for match in matches]
-        # mean_matches = sum(inv_matches) / len(inv_matches)
-        # std_matches = sum([(match - mean_matches) ** 2 for match in inv_matches]) / len(inv_matches)
-        # assert std_matches != 0, "std_matches should not be 0"
-        # normalized_matches = [(match - mean_matches) / std_matches for match in inv_matches]
-        sorted_matches, ranks = torch.sort(torch.tensor(matches), descending=True) # from large to small
-        # if self._max_matches_threshold is None and len(sorted_matches) == 1:
-        #     self._max_matches_threshold = int(sorted_matches[ranks[0]] * 0.75)
-        # else:
-        #     assert self._max_matches_threshold is not None
-        #     if float(sorted_matches[ranks[0]]) < self._max_matches_threshold:
-        #         print(f"max_matches_threshold is too low. below {self._max_matches_threshold}")
-        #         return None
-        #         return raw_result
-        print(sorted_matches)
-        result = TrackResults(raw_result.detect_result, ranks[0], ranks, sorted_matches, raw_result.target_features, raw_result.detected_features)
+        assert self.metric.metric_type == MetricType.COSINE_SIMILARITY, "Available only for cosine similarity"
+        if not embedder_result.success:
+            sorted_scores, ranks = torch.sort(torch.tensor(matches), descending=True) # from high to low
+        else:
+            assert embedder_result.ranks is not None
+            assert embedder_result.sorted_scores is not None
+            embedder_scores = self._unsorted_scores(embedder_result.ranks, embedder_result.sorted_scores)
+            combined_scores = [2 * (matches[i] * embedder_scores[i]) / (matches[i] + embedder_scores[i]) for i in range(len(matches))]
+            sorted_scores, ranks = torch.sort(torch.tensor(combined_scores), descending=True) # from high to low
+
+        result = TrackResults(detected_result, ranks[0], ranks.tolist(), sorted_scores.tolist())
+        assert result.target_idx is not None
+        croped = detected_result.get_crop_and_remove_background(result.target_idx)
+        self._last_sift_features = self._get_keypoints(croped)
         return result
-        
-        raw_ranks = raw_result.ranks
-        raw_sorted_scores = raw_result.sorted_scores
-        raw_unsorted_scores = self._unsorted_scores(raw_ranks, raw_sorted_scores)
-        raw_mean_score = sum(raw_unsorted_scores) / len(raw_unsorted_scores)
-        raw_std_score = sum([(score - raw_mean_score) ** 2 for score in raw_unsorted_scores]) / len(raw_unsorted_scores)
-        assert raw_std_score != 0, "std_score should not be 0"
-        raw_normalized_score = [(score - raw_mean_score) / raw_std_score for score in raw_unsorted_scores]
-        
-        sum_scores = [normalized_matches[idx] + raw_normalized_score[idx] for idx in range(len(normalized_matches))]
-        sorted_sum_scores, ranks = torch.sort(torch.tensor(sum_scores), descending=False) # from small to large
-        result = TrackResults(raw_result.detect_result, ranks[0], ranks, sorted_sum_scores)
-        return result
+
 
     def draw_result(self, frame: MatLike, track_result: TrackResults) -> None:
         super().draw_result(frame, track_result)
-        target_crop = track_result.detect_result.get_crop_and_remove_background(track_result.target_idx)
-        cv2.imshow("target_crop", target_crop)
+        # assert track_result.target_idx is not None
+        # assert track_result.detect_result is not None
+        # target_crop = track_result.detect_result.get_crop_and_remove_background(track_result.target_idx)
+        # cv2.imshow("target_crop", target_crop)
 
     def add_target_features(self, cv_image: MatLike, bbox: tuple[int, int, int, int]) -> None:
         croped_image = cv_image[bbox[1]:bbox[3], bbox[0]:bbox[2]]

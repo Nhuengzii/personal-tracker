@@ -8,10 +8,11 @@ from src.detectors.keypoints_detector import KeypointsDetector
 from src.embedders.base_embedder import BaseEmbedder
 from src.helpers import draw_bbox
 from src.metrics.base_metric import MetricType
-from src.personal_trackers.base_personal_tracker import BasePersonalTracker, TrackResults
+from src.personal_trackers.personal_tracker import PersonalTracker
+from src.personal_trackers.track_result import TrackResults
 
 
-class KeypointsPersonalTracker(BasePersonalTracker):
+class KeypointsPersonalTracker(PersonalTracker):
     def __init__(self, detector: KeypointsDetector, embedder: BaseEmbedder, metric: MetricType,
                  auto_add_target_features: bool = False, auto_add_target_features_interval: int = 60) -> None:
         super().__init__(detector, embedder, metric, auto_add_target_features, auto_add_target_features_interval)
