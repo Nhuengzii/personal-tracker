@@ -27,7 +27,7 @@ class BaseEmbedder:
             self.model = osnet.osnet_x0_25(pretrained=True)
         self.model.eval()
         self.image_size = (128, 256)
-        self.preprosessor = torchvision.transforms.Normalize(
+        self.preprocessor = torchvision.transforms.Normalize(
             mean=np.array([0.485, 0.456, 0.406]),
             std=np.array([0.229, 0.224, 0.225])
         )
@@ -39,6 +39,7 @@ class BaseEmbedder:
         image = cv2.resize(croped_image, self.image_size)
         image = image.transpose(2, 0, 1)
         image = torch.tensor(image, dtype=torch.float32)
+        image = self.preprocessor(image)
         image = image.unsqueeze(0)
         image = image.to(self.device)
         feature: torch.Tensor = self.model(image)

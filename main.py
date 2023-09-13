@@ -1,24 +1,37 @@
 import cv2
 from cv2.typing import MatLike
 import argparse
+from playsound import playsound
 
 from src.detectors import BaseDetector
+from src.detectors.segment_detector import SegmentDetector
 from src.embedders import BaseEmbedder
+from src.embedders.available_embedder_models import AvailableEmbedderModels
+from src.embedders.clip_embedder import CLIPEmbedder
 from src.metrics.base_metric import MetricType
-from src.personal_trackers import BasePersonalTracker
-from src.personal_trackers.kalman_personal_tracker import KalmanPersonalTracker
-from src.extentions.hand_triger import HandTriggerResult
+from src.personal_trackers import TrackResults, PersonalTracker
+from src.personal_trackers.me_personal_tracker import MEPersonalTracker
+from src.personal_trackers.sift_personal_tracker import SIFTPersonalTracker
+
 
 def main(source: str | int, args):
+    # rtmp_url = "http://192.168.137.218:8080/video"
     cap = cv2.VideoCapture(source)
+    # cap = cv2.VideoCapture(rtmp_url)
+
+    
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
 
     detector = BaseDetector()
     embedder = BaseEmbedder()
     hand_trigger = HandTriggerResult()
-    tracker = BasePersonalTracker(detector, embedder, MetricType.COSINE_SIMILARITY, auto_add_target_features=args.auto_add_target_features, auto_add_target_features_interval=args.auto_add_target_features_interval)
-    targets = tracker.get_target_from_camera(cap, 3)
+    # tracker = PersonalTracker(detector, embedder, MetricType.CSEM_DISTANCE, auto_add_target_features=args.auto_add_target_features, auto_add_target_features_interval=args.auto_add_target_features_interval)
+    tracker = SIFTPersonalTracker(SegmentDetector(), embedder, MetricType.EUCLIDEAN_DISTANCE)
+    tracker._kalman_trust_threshold = 4
+    playsound("./cap.mp3")
+    targets = tracker.get_repetitive_target_from_camera(cap, 5)
     for target in targets:
         tracker.add_target_features(target[0], target[1])
 
@@ -61,4 +74,4 @@ if __name__ == "__main__":
     else:
         vid_source = args.source
     main(source=vid_source, args=args)
-    
+    main(source=vid_source, args=args)

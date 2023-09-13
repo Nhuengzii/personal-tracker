@@ -18,8 +18,3 @@ class BaseDetector:
             print("pass loop because result.boxes is None or len(result.boxes) == 0")
             return None
         return DetectorResult(result)
-        
-        
-
-    
-        
