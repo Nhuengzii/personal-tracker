@@ -5,7 +5,6 @@ from src.detectors.base_detector import BaseDetector
 from src.embedders.base_embedder import BaseEmbedder
 from src.kalman_filter import KalmanFilter
 from src.metrics.base_metric import BaseMetric, MetricType
-from src.metrics.me_metric import MEMetric
 from src.personal_trackers.personal_tracker import PersonalTracker
 from src.personal_trackers.track_result import TrackResults
 

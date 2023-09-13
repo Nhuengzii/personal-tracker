@@ -47,7 +47,8 @@ class PersonalTracker():
             return None
         detected_features = self.embedder.extract_features(frame, detect_result.bboxes)
         target_features: list[torch.Tensor] = []
-        for _, features in self._target_features_pool:
+        for target in self._target_features_pool:
+            features = target[1]
             target_features.append(features.tolist()) # type: ignore
         ranks, sorted_scores = self.metric.rank(torch.tensor(target_features), detected_features)
         target_idx = ranks[0]
@@ -129,8 +130,8 @@ class PersonalTracker():
         return False
     def show_target_images(self) -> MatLike:
         target_images = []
-        for target_image, _ in self._target_features_pool:
-            target_images.append(cv2.resize(target_image, (128, 256)))
+        for target in self._target_features_pool:
+            target_images.append(cv2.resize(target[0], (128, 256)))
         # concat images in horizontal
         target_images = cv2.hconcat(target_images)
         return target_images

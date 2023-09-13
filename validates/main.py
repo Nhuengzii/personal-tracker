@@ -2,12 +2,14 @@ import cv2
 from cv2.typing import MatLike
 import argparse
 from src.detectors import BaseDetector
+from src.detectors.segment_detector import SegmentDetector
 from src.embedders import BaseEmbedder
 from src.embedders.available_embedder_models import AvailableEmbedderModels
 from src.metrics.base_metric import MetricType
 import os
 from src.personal_trackers.me_personal_tracker import MEPersonalTracker
 from src.personal_trackers.personal_tracker import PersonalTracker
+from src.personal_trackers.sift_personal_tracker import SIFTPersonalTracker
 
 
 def main(source: str | int, args):
@@ -19,14 +21,14 @@ def main(source: str | int, args):
     detector = BaseDetector()
     embedder1 = BaseEmbedder(model=AvailableEmbedderModels.OSNET_AIN_X1_0)
     embedder2 = BaseEmbedder(model=AvailableEmbedderModels.OSNET_AIN_X1_0)
-    embedders = [BaseEmbedder(AvailableEmbedderModels.OSNET_X1_0), BaseEmbedder(AvailableEmbedderModels.OSNET_AIN_X1_0)]
-    embedders.append(BaseEmbedder(AvailableEmbedderModels.OSNET_X0_75))
-    embedders.append(BaseEmbedder(AvailableEmbedderModels.OSNET_AIN_X0_75))
-    tracker1 = MEPersonalTracker(detector, embedders, MetricType.COSINE_SIMILARITY)
+    # embedders = [BaseEmbedder(AvailableEmbedderModels.OSNET_X1_0), BaseEmbedder(AvailableEmbedderModels.OSNET_AIN_X1_0)]
+    # embedders.append(BaseEmbedder(AvailableEmbedderModels.OSNET_X0_75))
+    # embedders.append(BaseEmbedder(AvailableEmbedderModels.OSNET_AIN_X0_75))
+    tracker1 = SIFTPersonalTracker(SegmentDetector(), embedder1, MetricType.COSINE_SIMILARITY)
     # tracker1 = PersonalTracker(detector, embedder1, MetricType.CSEM_DISTANCE) 
-    tracker2 = PersonalTracker(detector, embedder2, MetricType.COSINE_SIMILARITY)
+    tracker2 = PersonalTracker(detector, embedder2, MetricType.CSEM_DISTANCE)
     cur = os.getcwd()
-    targets = tracker1.get_target_from_camera(cap, 3)
+    targets = tracker1.get_target_from_camera(cap, 8)
     for target in targets:
         tracker1.add_target_features(target[0], target[1])
         tracker2.add_target_features(target[0], target[1])
@@ -52,6 +54,10 @@ def main(source: str | int, args):
         concat_frame = cv2.resize(concat_frame, (1280, 720))
         cv2.imshow("target", tracker2.show_target_images())
         cv2.imshow('frame', concat_frame)
+        if cv2.waitKey(1) == ord(' '):
+            while True:
+                if cv2.waitKey(1) == ord(' '):
+                    break
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
