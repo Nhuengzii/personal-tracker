@@ -1,16 +1,15 @@
 import torch
-from src.metrics.cosine_similarity import CosineSimilarity
-from src.metrics.euclidian import EuclideanDistance
-from src.metrics.mahalanobis import MahalanobisDistance
+from .cosine_similarity import CosineSimilarity
+from .euclidian import EuclideanDistance
+from .mahalanobis import MahalanobisDistance
 
-
-class CSEMMetric():
+class CSEM():
     def __init__(self) -> None:
         self.cosine_similarity = CosineSimilarity()
         self.euclidean_distance = EuclideanDistance()
         self.mahalanobis_distance = MahalanobisDistance()
 
-    def rank(self, target_features: torch.Tensor, query_features: torch.Tensor, kalman_distances: torch.Tensor | None = None) -> tuple[list[int], list[float]]:
+    def rank(self, target_features: torch.Tensor, query_features: torch.Tensor) -> tuple[list[int], list[float]]:
         assert len(query_features) > 0
         cs_scores = self.cosine_similarity.compute_similarity(target_features, query_features) + 1
         e_scores = self.euclidean_distance.compute_distance(target_features, query_features)

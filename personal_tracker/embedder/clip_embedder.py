@@ -1,12 +1,12 @@
 from cv2.typing import MatLike
 import torch
-from src.embedders.base_embedder import BaseEmbedder
 import cv2
 import clip
-from PIL import Image 
+from PIL import Image
+from personal_tracker.embedder.emebedder import Embedder 
 
 
-class CLIPEmbedder(BaseEmbedder):
+class CLIPEmbedder(Embedder):
     def __init__(self) -> None:
         super().__init__()
         self.model, self.preprocess = clip.load("ViT-B/32", device=self.device)

@@ -2,15 +2,9 @@ import cv2
 import pafy
 from cv2.typing import MatLike
 import argparse
-from src.detectors import BaseDetector
-from src.detectors.segment_detector import SegmentDetector
-from src.embedders import BaseEmbedder
-from src.embedders.available_embedder_models import AvailableEmbedderModels
-from src.metrics.base_metric import MetricType
 import os
-from src.personal_trackers.me_personal_tracker import MEPersonalTracker
-from src.personal_trackers.personal_tracker import PersonalTracker
-from src.personal_trackers.sift_personal_tracker import SIFTPersonalTracker
+
+from personal_tracker.personal_tracker import PersonalTracker
 
 
 def main(source: str | int, args):
@@ -18,29 +12,12 @@ def main(source: str | int, args):
     cap = cv2.VideoCapture(source)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-    detector = BaseDetector()
-    embedder1 = BaseEmbedder(model=AvailableEmbedderModels.OSNET_AIN_X1_0)
-    embedder2 = BaseEmbedder(model=AvailableEmbedderModels.OSNET_AIN_X1_0)
-    # embedders = [BaseEmbedder(AvailableEmbedderModels.OSNET_X1_0), BaseEmbedder(AvailableEmbedderModels.OSNET_AIN_X1_0)]
-    # embedders.append(BaseEmbedder(AvailableEmbedderModels.OSNET_X0_75))
-    # embedders.append(BaseEmbedder(AvailableEmbedderModels.OSNET_AIN_X0_75))
-    tracker1 = SIFTPersonalTracker(SegmentDetector(), embedder1, MetricType.COSINE_SIMILARITY).remove_query_background(False).use_embedder()
-    # tracker1 = PersonalTracker(detector, embedder1, MetricType.CSEM_DISTANCE) 
-    tracker2 = SIFTPersonalTracker(SegmentDetector(), embedder2, MetricType.COSINE_SIMILARITY)
-    cur = os.getcwd()
+    tracker1 = PersonalTracker()
+    tracker2 = PersonalTracker()
     targets = tracker1.get_repetitive_target_from_camera(cap, 5)
     for target in targets:
         tracker1.add_target_features(target[0], target[1])
         tracker2.add_target_features(target[0], target[1])
-    # for target in glob.glob(f"{cur}/validates/validate_sets/{args.set}/target_images/*.png"):
-    #     print(target)
-    #     croped_image = cv2.imread(target)
-    #     full_bbox = (0, 0, croped_image.shape[1], croped_image.shape[0])
-    #     tracker1.add_target_features(croped_image, full_bbox)
-    #     tracker2.add_target_features(croped_image, full_bbox)
-    print(f"Tracker1 Start tracking with {len(tracker1._target_features_pool)} targets")
-    print(f"Tracker2 Start tracking with {len(tracker2._target_features_pool)} targets")
-    
     
     while True:
         ret, frame = cap.read()
@@ -48,15 +25,10 @@ def main(source: str | int, args):
         frame2 = frame.copy()
         if not ret:
             break
-        try:
-            track_result = tracker1.track(frame1, draw_result=True)
-            track_result = tracker2.track(frame2, draw_result=True)
-        except:
-            print("Error while tracking. continue ...")
-            continue
+        track_result = tracker1.track(frame1, draw_result=True)
+        track_result = tracker2.track(frame2, draw_result=True)
         concat_frame = cv2.hconcat([frame1, frame2])
         concat_frame = cv2.resize(concat_frame, (1280, 720))
-        cv2.imshow("target", tracker2.show_target_images())
         cv2.imshow('frame', concat_frame)
         if cv2.waitKey(1) == ord(' '):
             while True:

@@ -1,8 +1,7 @@
-from src.detectors.detector_result import DetectorResult
 from torch import Tensor
+from personal_tracker.detector.detector_result import DetectorResult
 
-
-class TrackResults:
+class TrackResult:
     def __init__(self, detect_result: DetectorResult | None = None, target_idx: int | None = None, ranks: list[int] | None = None, sorted_scores: list[float] | None = None, target_features: Tensor | None = None, detected_results: Tensor | None = None ) -> None:
         self.detect_result = detect_result
         self.target_idx = target_idx

@@ -4,16 +4,8 @@ from cv2.typing import MatLike
 import argparse
 from playsound import playsound
 import threading
-
-from src.detectors import BaseDetector
-from src.detectors.segment_detector import SegmentDetector
-from src.embedders import BaseEmbedder
-from src.embedders.available_embedder_models import AvailableEmbedderModels
-from src.embedders.clip_embedder import CLIPEmbedder
-from src.metrics.base_metric import MetricType
-from src.personal_trackers import TrackResults, PersonalTracker
-from src.personal_trackers.me_personal_tracker import MEPersonalTracker
-from src.personal_trackers.sift_personal_tracker import SIFTPersonalTracker
+from personal_tracker import PersonalTracker
+from personal_tracker.helpers import draw_bbox
 
 class VideoStreamWidget(object):
     def __init__(self, src: str):
@@ -48,32 +40,19 @@ def main(source: str | int, args):
     # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
 
-    detector = BaseDetector()
-    embedder = BaseEmbedder()
-    # tracker = PersonalTracker(detector, embedder, MetricType.CSEM_DISTANCE, auto_add_target_features=args.auto_add_target_features, auto_add_target_features_interval=args.auto_add_target_features_interval)
-    tracker = SIFTPersonalTracker(SegmentDetector(), embedder, MetricType.COSINE_SIMILARITY).use_embedder()
-    playsound("./cap.mp3")
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        cv2.imshow('frame', frame)
-        if cv2.waitKey(1) == ord(' '):
-            break
-    targets = tracker.get_repetitive_target_from_camera(cap, 4)
+    tracker = PersonalTracker()
+    # playsound("./cap.mp3")
+    targets = tracker.get_target_from_camera(cap, 4)
     for target in targets:
-        tracker.add_target_features(target[0], target[1])
+        tracker._tracker.add_target_features(target[0], target[1])
 
-    cv2.imshow("target", tracker.show_target_images())
-    print(f"Start tracking with {len(tracker._target_features_pool)} targets")
+    # cv2.imshow("target", tracker._tracker.show_target_images())
+    print(f"Start tracking with {len(tracker._tracker._target_features_pool)} targets")
     while True:
         ret, frame = cap.read()
         if not ret:
             break
-        try:
-            track_result = tracker.track(frame, draw_result=True)
-        except:
-            continue
+        result = tracker.track(frame, True)
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
