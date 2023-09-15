@@ -91,6 +91,11 @@ class Tracker():
         if embedder_scores is not None:
             assert embedder_scores is not None
             assert len(matches) == len(embedder_scores)
+            if self._metric.metric_type in [MetricType.CSEM_DISTANCE, MetricType.MAHALANOBIS_DISTANCE, MetricType.EUCLIDEAN_DISTANCE]:
+                # inverse the distance
+                mean_embedder_scores = sum(embedder_scores) / len(embedder_scores)
+                for idx in range(len(embedder_scores)):
+                    embedder_scores[idx] = mean_embedder_scores / embedder_scores[idx]
             combined_scores = [0.0 for i in range(len(matches))]
             for idx in range(len(matches)):
                 combined_scores[idx] = 2 * matches[idx] * embedder_scores[idx] / (matches[idx] + embedder_scores[idx])
@@ -102,10 +107,15 @@ class Tracker():
         assert isinstance(sorted_scores, torch.Tensor)
         target_idx = int(ranks[0].item())
 
+        metric_type = self._metric.metric_type
+        if metric_type in [MetricType.CSEM_DISTANCE, MetricType.MAHALANOBIS_DISTANCE, MetricType.EUCLIDEAN_DISTANCE]:
+            percent = 0.90
+        else:
+            percent = 0.95
         if len(self._scores_history) > 0:
             mean_score_history = sum(self._scores_history) / len(self._scores_history)
-            if sorted_scores[0].item() < mean_score_history * 0.95:
-                # print(f"Score too low. skipping ... {sorted_scores[0].item()} < {mean_score_history * 0.9}")
+            if sorted_scores[0].item() < mean_score_history * percent:
+                # print(f"Score too low. skipping ... {sorted_scores[0].item()} < {mean_score_history * percent}")
                 return TrackResult(detection_result)
         result = TrackResult(detection_result, target_idx, ranks.tolist(), sorted_scores.tolist())
         return result
@@ -194,7 +204,7 @@ class Tracker():
         c = (0, 255, 0)
         if track_result.is_overwrited:
             c = (255, 0, 255)
-        draw_bbox(frame, target_bbox, c)
+        draw_bbox(frame, target_bbox, c, str(track_result.sorted_scores[track_result.target_idx])) # type: ignore
     
     def _should_add_target_features(self, track_result: TrackResult) -> bool:
         if not self.auto_add_target_features:
