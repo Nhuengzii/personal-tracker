@@ -2,15 +2,14 @@ from datetime import time
 import cv2
 from cv2.typing import MatLike
 import argparse
-from personal_tracker.helpers import crop_image_from_bbox
 from playsound import playsound
 import threading
+import math
 from personal_tracker import PersonalTracker, TrackerConfig
 from personal_tracker.embedder.available_embedder_models import AvailableEmbedderModels
-from personal_tracker.helpers import draw_bbox
+from personal_tracker.helpers import draw_bbox, crop_image_from_bbox
 from src.extentions.hand_triger import HandTriggerResult
 from personal_tracker.detector import Detector
-import math
 
 class VideoStreamWidget(object):
     def __init__(self, src: str):
@@ -44,63 +43,53 @@ def main(source: str | int, args):
 
     config = TrackerConfig().set_auto_add_target_features(True, 10).set_sift_history_size(2).set_embedder_model(AvailableEmbedderModels.OSNET_AIN_X1_0)
     tracker = PersonalTracker(config)
-    detector = Detector()
     hand_trigger = HandTriggerResult()
+    min_diff = 100000
+    target_person = None
     playsound("./cap.mp3")
-    #targets = tracker.get_repetitive_target_from_camera(cap, 4)
-    #for target in targets:
-    #    tracker._tracker.add_target_features(target[0], target[1])
+    targets = tracker.get_repetitive_target_from_camera(cap, 4)
+    for target in targets:
+        tracker._tracker.add_target_features(target[0], target[1])
 
     # cv2.imshow("target", tracker._tracker.show_target_images())
-    #print(f"Start tracking with {len(tracker._tracker._target_features_pool)} targets")
-    target_person = None
-    min_diff = 10000
+    print(f"Start tracking with {len(tracker._tracker._target_features_pool)} targets")
     while True:
         ret, frame = cap.read()
-        #small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
         if not ret:
             break
-
+        # detector_result = Detector().detect(frame)
+        # if detector_result.bboxes is None:
+        #     continue
         
-        detector_result = detector.detect(frame)
-        if detector_result is None:
-            continue
-        
-        
-        
-        for bbox in detector_result.bboxes:
-            center_person = hand_trigger.get_center_of_frame(bbox)
-            frame_person = crop_image_from_bbox(frame, bbox)
-            hand_person, hand_lm = hand_trigger.process_hands(frame_person,True)
-            if not hand_trigger.is_detect:
-                target_person = None
-                continue
-            #cv2.imshow("target", frame_person)
-            if target_person is None:
-                target_person = hand_trigger.get_center_of_frame(bbox)
+        # for bbox in detector_result.bboxes:
+        #     center_person = hand_trigger.get_center_of_frame(bbox)
+        #     frame_person = crop_image_from_bbox(frame, bbox)
+        #     hand_person, hand_lm = hand_trigger.process_hands(frame_person,True)
+        #     if not hand_trigger.is_detect:
+        #         target_person = None
+        #         continue
+        #     #cv2.imshow("target", frame_person)
+        #     if target_person is None:
+        #         target_person = hand_trigger.get_center_of_frame(bbox)
                 
-            cv2.putText(frame, "*", target_person, cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 0, 255), 5, cv2.LINE_AA)
-            diff = math.sqrt((target_person[0] - center_person[0])**2 + (target_person[1] - center_person[1])**2)
-            diff_text = f"Diff: {diff:.2f}"
-            cv2.putText(frame, diff_text, (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv2.LINE_AA)
-            if diff < min_diff:
-                min_diff = diff
-                target_bbox = bbox
-            target_img = crop_image_from_bbox(frame, target_bbox)
-            cv2.imshow("target", target_img)
-        if target_person and hand_trigger.is_detect:
-            pass
-            #tracker._tracker.add_target_features(target_img, target_bbox)
-            #result = tracker.track(frame, True)
-
-            
-                
+        #     cv2.putText(frame, "*", target_person, cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 0, 255), 5, cv2.LINE_AA)
+        #     diff = math.sqrt((target_person[0] - center_person[0])**2 + (target_person[1] - center_person[1])**2)
+        #     diff_text = f"Diff: {diff:.2f}"
+        #     cv2.putText(frame, diff_text, (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv2.LINE_AA)
+        #     if diff < min_diff:
+        #         min_diff = diff
+        #         target_bbox = bbox
+        #     target_img = crop_image_from_bbox(frame, target_bbox)
+        #     cv2.imshow("target", target_img)
+        # if target_person and hand_trigger.is_detect:
+            # start detect
         
-        hand_trigger.show_status(frame)        
+
+        result = tracker.track(frame, True)
         if result.success and result.sorted_scores is not None:
             assert result.target_idx is not None
-        cv2.imshow('frame', frame)
         cv2.imshow('result', tracker._tracker.show_target_images())
+        cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
