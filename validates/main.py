@@ -3,8 +3,11 @@ import pafy
 from cv2.typing import MatLike
 import argparse
 import os
+from personal_tracker.embedder.available_embedder_models import AvailableEmbedderModels
+from personal_tracker.metric.metric_type import MetricType
 
 from personal_tracker.personal_tracker import PersonalTracker
+from personal_tracker.tracker_config import TrackerConfig
 
 
 def main(source: str | int, args):
@@ -12,9 +15,11 @@ def main(source: str | int, args):
     cap = cv2.VideoCapture(source)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-    tracker1 = PersonalTracker()
-    tracker2 = PersonalTracker()
-    targets = tracker1.get_repetitive_target_from_camera(cap, 5)
+    config1 = TrackerConfig().set_metric_type(MetricType.COSINE_SIMILARITY).set_embedder_model(AvailableEmbedderModels.OSNET_AIN_X0_25)
+    config2 = TrackerConfig().set_metric_type(MetricType.COSINE_SIMILARITY).set_embedder_model(AvailableEmbedderModels.OSNET_AIN_X1_0)
+    tracker1 = PersonalTracker(config1)
+    tracker2 = PersonalTracker(config2)
+    targets = tracker1.get_target_from_camera(cap, 5)
     for target in targets:
         tracker1.add_target_features(target[0], target[1])
         tracker2.add_target_features(target[0], target[1])

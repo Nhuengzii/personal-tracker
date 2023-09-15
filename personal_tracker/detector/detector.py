@@ -14,6 +14,5 @@ class Detector:
             return None
         result = results[0]
         if result.boxes is None or len(result.boxes) == 0:
-            print("No boxes found")
             return None
         return DetectorResult(result)

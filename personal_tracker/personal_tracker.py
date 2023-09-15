@@ -2,19 +2,30 @@ from cv2.typing import MatLike
 import cv2
 from datetime import datetime
 from personal_tracker.detector.detector import Detector
+from personal_tracker.embedder.available_embedder_models import AvailableEmbedderModels
+from personal_tracker.embedder.clip_embedder import CLIPEmbedder
 from personal_tracker.embedder.emebedder import Embedder
 from personal_tracker.metric import Metric
 from personal_tracker.metric.metric_type import MetricType
-from personal_tracker.tracker.track_result import TrackResult
-from personal_tracker.tracker.tracker import Tracker
+from personal_tracker.tracker import Tracker, TrackResult, TrackerConfig
 
 
 class PersonalTracker:
-    def __init__(self) -> None:
+    def __init__(self, config: TrackerConfig) -> None:
         self._detector = Detector()
-        self._embedder = Embedder()
-        self.metric_type = MetricType.COSINE_SIMILARITY
-        self._tracker = Tracker(self._detector, self._embedder, self.metric_type)
+        if config.embedder_model is None:
+            self._embedder = None
+        elif config.embedder_model == AvailableEmbedderModels.CLIP:
+            self._embedder = CLIPEmbedder()
+        else:
+            self._embedder = Embedder(config.embedder_model)
+        self.metric_type = config.metric_type
+        self._tracker = Tracker(self._detector,
+                                self._embedder,
+                                self.metric_type,
+                                sift_history_size=config.sift_history_size,
+                                auto_add_target_features=config.auto_add_target_features,
+                                auto_add_target_features_interval=config.auto_add_target_features_interval)
 
     def track(self, frame: MatLike, draw_result: bool = False) -> TrackResult:
         result = self._tracker.track(frame, draw_result)
@@ -61,7 +72,7 @@ class PersonalTracker:
             soi = detected.bboxes[0]
             # convert to x1, y1, x2, y2
             targets.append((target_frame, soi))
-            cv2.waitKey(25)
+            cv2.waitKey(100)
         cv2.destroyAllWindows()
         return targets
 
