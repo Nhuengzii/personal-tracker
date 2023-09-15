@@ -24,7 +24,7 @@ def init_camera():
     return cap
 
 @st.cache_resource()
-def init_tracker():
+def init_tracker(_config: TrackerConfig):
     config = TrackerConfig().set_embedder_model(AvailableEmbedderModels.OSNET_AIN_X1_0).set_metric_type(MetricType.COSINE_SIMILARITY2) \
             .set_sift_history_size(2)
     return PersonalTracker(config)
@@ -38,6 +38,11 @@ def toggle_tracking():
         cam.release()
         st.cache_resource.clear()
 
+if "start_tracking" not in st.session_state:
+    st.session_state.start_tracking = False
+    
+if "has_target" not in st.session_state:
+    st.session_state.has_target = False
 # Tracker Config
 sidebar = st.sidebar
 with sidebar:
@@ -52,18 +57,18 @@ with sidebar:
     if auto_add_target_features:
         auto_add_target_features_interval = st.slider("Auto Add Target Features Interval in second.", 1, 1000, 1000)
 
-if "start_tracking" not in st.session_state:
-    st.session_state.start_tracking = False
-    
-if "has_target" not in st.session_state:
-    st.session_state.has_target = False
+    t_config = TrackerConfig().set_embedder_model(AvailableEmbedderModels(embedder_model)).set_sift_history_size(sift_history_size) \
+    .set_metric_type(MetricType(tracker_metric))
+    if auto_add_target_features:
+        t_config.set_auto_add_target_features(True, auto_add_target_features_interval) # type: ignore
+
 
 if st.session_state.start_tracking and not st.session_state.has_target:
     if "targets" not in st.session_state:
         st.session_state.targets = []
     st.write("Please select a target")
     cap = init_camera()
-    tracker = init_tracker()
+    tracker = init_tracker(t_config)
     c1, c2 = st.columns(2)
     with c1:
         add = st.button("Add Target")
@@ -115,7 +120,7 @@ else:
 if st.session_state.start_tracking:
     cap = init_camera()
     cam_placeholder = st.empty()
-    tracker = init_tracker()
+    tracker = init_tracker(t_config)
     st.write(f"Tracker: started with {len(tracker._tracker._target_features_pool)} targets")
     while True:
         ret, frame = cap.read()
