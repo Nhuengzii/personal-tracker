@@ -54,9 +54,8 @@ def main(source: str | int, args):
 
     # cv2.imshow("target", tracker._tracker.show_target_images())
     #print(f"Start tracking with {len(tracker._tracker._target_features_pool)} targets")
-    has_target = None
     target_person = None
-    list_target = []
+    min_diff = 10000
     while True:
         ret, frame = cap.read()
         #small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
@@ -70,7 +69,6 @@ def main(source: str | int, args):
         
         
         
-        min_diff = 10000
         for bbox in detector_result.bboxes:
             center_person = hand_trigger.get_center_of_frame(bbox)
             frame_person = crop_image_from_bbox(frame, bbox)
@@ -79,31 +77,27 @@ def main(source: str | int, args):
                 target_person = None
                 continue
             #cv2.imshow("target", frame_person)
-            target_person = hand_trigger.get_center_of_frame(bbox)
-
+            if target_person is None:
+                target_person = hand_trigger.get_center_of_frame(bbox)
+                
+            cv2.putText(frame, "*", target_person, cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 0, 255), 5, cv2.LINE_AA)
             diff = math.sqrt((target_person[0] - center_person[0])**2 + (target_person[1] - center_person[1])**2)
+            diff_text = f"Diff: {diff:.2f}"
+            cv2.putText(frame, diff_text, (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv2.LINE_AA)
             if diff < min_diff:
                 min_diff = diff
                 target_bbox = bbox
             target_img = crop_image_from_bbox(frame, target_bbox)
             cv2.imshow("target", target_img)
-        if target_person:
-            tracker._tracker.add_target_features(target_img, target_bbox)
-            result = tracker.track(frame, True)
+        if target_person and hand_trigger.is_detect:
+            pass
+            #tracker._tracker.add_target_features(target_img, target_bbox)
+            #result = tracker.track(frame, True)
 
             
                 
         
-        hand_trigger.show_status(frame)
-                
-
-
-
-        
-
-        
-        
-        
+        hand_trigger.show_status(frame)        
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
