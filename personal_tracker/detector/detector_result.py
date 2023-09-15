@@ -38,13 +38,16 @@ class DetectorResult:
     def classes(self) -> list[int]:
         return self.results_boxes.cls.tolist()
 
-    def get_crop_and_remove_background(self,idx: int) -> MatLike:
+    def get_crop_and_remove_background(self,idx: int, rm_bg: bool = True) -> MatLike:
         frame = self.ori_image
         assert self.masks is not None
         mask = self.masks.data[idx].cpu().numpy()
         frame = cv2.resize(frame, (mask.shape[1], mask.shape[0]))
         mask = np.where(mask == 0, 0, 1).astype(np.uint8)
-        remove_background = cv2.bitwise_and(frame, frame, mask=mask)
+        if rm_bg:
+            remove_background = cv2.bitwise_and(frame, frame, mask=mask)
+        else:
+            remove_background = frame
         bbox = self._bboxes_n[idx]
         x1, y1, x2, y2 = bbox[0], bbox[1], bbox[2], bbox[3]
         x1 = int(x1 * mask.shape[1])

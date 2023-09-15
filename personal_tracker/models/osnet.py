@@ -185,7 +185,7 @@ class ChannelGate(nn.Module):
         )
         self.norm1 = None
         if layer_norm:
-            self.norm1 = nn.LayerNorm((in_channels // reduction, 1, 1))
+            self.norm1 = nn.LayerNorm((in_channels // reduction, 1, 1)) # type: ignore
         self.relu = nn.ReLU(inplace=True)
         self.fc2 = nn.Conv2d(
             in_channels // reduction,

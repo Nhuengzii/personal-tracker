@@ -1,13 +1,14 @@
 from cv2.typing import MatLike
 import torch
-from src.embedders.available_embedder_models import AvailableEmbedderModels
-from src.models import osnet_ain, osnet
 import torchvision
 import numpy as np
 import cv2
 
+from personal_tracker.embedder.available_embedder_models import AvailableEmbedderModels
+from personal_tracker.models import osnet, osnet_ain
 
-class BaseEmbedder:
+
+class Embedder:
     def __init__(self, model: AvailableEmbedderModels = AvailableEmbedderModels.OSNET_AIN_X1_0) -> None:
         if model == AvailableEmbedderModels.OSNET_AIN_X1_0:
             self.model = osnet_ain.osnet_ain_x1_0(pretrained=True)

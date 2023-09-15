@@ -1,5 +1,5 @@
 from enum import Enum
-from src.models import osnet_ain, osnet
+from personal_tracker.models import osnet_ain, osnet
 
 class AvailableEmbedderModels(Enum):
     OSNET_X1_0 = "osnet_x1_0"
