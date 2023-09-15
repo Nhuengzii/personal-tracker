@@ -6,7 +6,7 @@ from personal_tracker.kalman_filter import KalmanFilter
 from personal_tracker.detector import Detector
 from personal_tracker.embedder import Embedder
 from personal_tracker.helpers import draw_bbox, rec_check
-from datetime import datetime
+from datetime import datetime, timedelta
 from cv2.typing import MatLike
 import numpy as np
 import torch
@@ -15,12 +15,13 @@ from collections import deque
 
 
 class Tracker():
-    def __init__(self, detector: Detector, embedder: Embedder | None, metric_type: MetricType, auto_add_target_features: bool = False, auto_add_target_features_interval: int = 60) -> None:
+    def __init__(self, detector: Detector, embedder: Embedder | None, metric_type: MetricType, auto_add_target_features: bool = False, auto_add_target_features_interval: int = 60,
+                 sift_history_size: int = 10, scores_history_size: int = 10) -> None:
         self._detector = detector
         self._embedder = embedder
         self._metric = Metric(metric_type)
         self.kf = KalmanFilter()
-        self._target_features_pool: list[tuple[MatLike, torch.Tensor | None, Any]] = []
+        self._target_features_pool: deque[tuple[MatLike, torch.Tensor | None, Any]] = deque(maxlen=200)
         self._last_update_time = datetime.now()
         self._last_auto_add_target_features_time = datetime.now()
         self.auto_add_target_features = auto_add_target_features
@@ -32,13 +33,19 @@ class Tracker():
         self._t_missed_threshold = 30 # track missed threshold
         self.sift = cv2.SIFT_create() # type: ignore
         self.bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
-        self._sift_history: deque[Any] = deque(maxlen=10)
+        self._sift_history: deque[Any] = deque(maxlen=sift_history_size)
+        self._scores_history: deque[float] = deque(maxlen=scores_history_size)
 
     def track(self, frame: MatLike, draw_result: bool = False) -> TrackResult:
         raw_result = self._algorithm(frame)
         result = self._kalman_ensuring(frame, raw_result)
         if result is not None and result.success:
             if draw_result: self.draw_result(frame, result);
+            self._scores_history.append(result.target_score)
+        if self._should_add_target_features(result):
+            assert result.target_bbox is not None
+            self.add_target_features(frame, result.target_bbox)
+            self._last_auto_add_target_features_time = datetime.now()
         self._last_update_time = datetime.now()
         self._last_track_result = result
         return result
@@ -64,13 +71,19 @@ class Tracker():
             q_keypoints.append(self._get_sift_keypoints(croped))
         matches = [0 for _ in range(len(q_keypoints))]
         for idx in range(len(self._target_features_pool)):
-            ms = self._get_matches_sift_keypoints(self._target_features_pool[idx][2], q_keypoints)
+            try:
+                ms = self._get_matches_sift_keypoints(self._target_features_pool[idx][2], q_keypoints)
+            except:
+                return TrackResult(detection_result)
             assert len(ms) == len(matches)
             for i in range(len(ms)):
                 matches[i] += ms[i]
         # Sift bias from history
         for s in self._sift_history:
-            ms = self._get_matches_sift_keypoints(s, q_keypoints)
+            try:
+                ms = self._get_matches_sift_keypoints(s, q_keypoints)
+            except:
+                return TrackResult(detection_result)
             assert len(ms) == len(matches)
             for i in range(len(ms)):
                 matches[i] += ms[i]
@@ -88,6 +101,12 @@ class Tracker():
         assert isinstance(ranks, torch.Tensor)
         assert isinstance(sorted_scores, torch.Tensor)
         target_idx = int(ranks[0].item())
+
+        if len(self._scores_history) > 0:
+            mean_score_history = sum(self._scores_history) / len(self._scores_history)
+            if sorted_scores[0].item() < mean_score_history * 0.95:
+                # print(f"Score too low. skipping ... {sorted_scores[0].item()} < {mean_score_history * 0.9}")
+                return TrackResult(detection_result)
         result = TrackResult(detection_result, target_idx, ranks.tolist(), sorted_scores.tolist())
         return result
 
@@ -110,21 +129,14 @@ class Tracker():
 
     def _kalman_ensuring(self, frame: MatLike, raw_result: TrackResult) -> TrackResult:
         if not raw_result.success:
-            if self._last_track_result is not None:
-                if self._t_missed > self._t_missed_threshold:
-                    self._t_missed = 0
-                    return raw_result
-                assert self._last_track_result.success
-                last_target_bbox = self._last_track_result.target_bbox
-                assert last_target_bbox is not None
-                cx, cy = (last_target_bbox[0] + last_target_bbox[2]) // 2, (last_target_bbox[1] + last_target_bbox[3]) // 2
-                pcx, pcy = self.kf.predict(cx, cy)
-                self._t_missed += 1
-            else:
-                self.kf = KalmanFilter()
+            self._t_missed += 1
+            self._last_track_result = raw_result
+            return raw_result
         assert raw_result.target_idx is not None
+        if self._last_track_result is None or not self._last_track_result.success:
+            return raw_result
         algorithm_target_idx = raw_result.target_idx     
-        last_target_bbox = raw_result.target_bbox
+        last_target_bbox = self._last_track_result.target_bbox
         assert last_target_bbox is not None
         cx, cy = (last_target_bbox[0] + last_target_bbox[2]) // 2, (last_target_bbox[1] + last_target_bbox[3]) // 2
         pcx, pcy = self.kf.predict(cx, cy)
@@ -169,7 +181,9 @@ class Tracker():
         # assert detect_result.num_detected == 1, "detect_result.num_detected should be 1"
         rm_bg = detect_result.get_crop_and_remove_background(0)
         kp, des = self._get_sift_keypoints(rm_bg)
-        assert self._embedder is not None
+        if self._embedder is None:
+            self._target_features_pool.append((croped_image, None, (kp, des)))
+            return
         features = self._embedder.extract_feature(croped_image)
         self._target_features_pool.append((croped_image, features, (kp, des)))
         
@@ -183,10 +197,18 @@ class Tracker():
         draw_bbox(frame, target_bbox, c)
     
     def _should_add_target_features(self, track_result: TrackResult) -> bool:
+        if not self.auto_add_target_features:
+            return False
+        if (datetime.now() - self._last_auto_add_target_features_time).seconds < self.auto_add_target_features_interval:
+            # # penalty last_time by subtracting 1 / 4 of interval
+            # self._last_auto_add_target_features_time -= timedelta(seconds=int(self.auto_add_target_features_interval / 4))
+            return False
         if track_result.detect_result is None:
             return False
         bboxes = track_result.detect_result.bboxes 
         target_idx = track_result.target_idx
+        if target_idx is None:
+            return False
         if target_idx == -1:
             return False
         check = rec_check(bboxes, target_idx, 20)

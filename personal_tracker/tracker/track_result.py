@@ -27,6 +27,13 @@ class TrackResult:
         return self.detect_result.bboxes[self.target_idx]
 
     @property
+    def target_score(self) -> float:
+        assert self.target_idx is not None
+        assert self.detect_result is not None
+        assert self.sorted_scores is not None
+        return self.sorted_scores[self.target_idx]
+
+    @property
     def is_overwrited(self) -> bool:
         return self._k_target_bbox is not None
 
