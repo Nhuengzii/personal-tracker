@@ -162,3 +162,5 @@ cython_debug/
 yolov*
 datasets/*
 validates/validate_sets/*
+t/*
+u/*
