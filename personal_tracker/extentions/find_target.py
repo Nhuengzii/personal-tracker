@@ -49,8 +49,14 @@ def find_target_with_hand(cap):
                 target_img = crop_image_from_bbox(frame, target_bbox)
             cv2.imshow("target", target_img)
             if target_person and hand_trigger.is_detect:
+                return target_img
                 pass
                     #start detect
 
 cap = cv2.VideoCapture(0)
-find_target_with_hand(cap)
+target_img = find_target_with_hand(cap)
+cv2.imshow("target", target_img)
+if cv2.waitKey(0) & 0xFF == ord('q'):
+    cv2.destroyAllWindows()
+    cap.release()
+    exit()
