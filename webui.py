@@ -74,15 +74,24 @@ if st.session_state.start_tracking and not st.session_state.has_target:
         add = st.button("Add Target")
         cam_placeholder = st.empty()
     with c2:
-        target_container = st.container()
-        for target in st.session_state.targets:
-            croped = target[0][target[1][1]:target[1][3], target[1][0]:target[1][2]] # y1:y2, x1:x2
-            resized = cv2.resize(croped, (128, 256))
-            target_container.image(resized, channels="BGR")
         cancel = st.button("Cancel", on_click=toggle_tracking)
         more_than_zero = len(st.session_state.targets) > 0
         start_t = st.button("Start Tracking!", disabled= not more_than_zero, 
                             help="You need at least 1 targets to start tracking" if not more_than_zero else "Click to start tracking")
+        if more_than_zero > 0:
+            n_picture = 16
+            n = 5
+            groups = []
+            for i in range(0, len(st.session_state.targets), n):
+                groups.append(st.session_state.targets[i:i+n])
+
+            cols = st.columns(n)
+            for group in groups:
+                for i, target in enumerate(group):
+                        croped = target[0][target[1][1]:target[1][3], target[1][0]:target[1][2]]
+                        resized = cv2.resize(croped, (128, 256))
+                        cols[i].image(resized, channels="BGR")
+
     while True:
         if cancel:
             break
