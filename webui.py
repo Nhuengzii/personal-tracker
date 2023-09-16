@@ -79,7 +79,6 @@ if st.session_state.start_tracking and not st.session_state.has_target:
         start_t = st.button("Start Tracking!", disabled= not more_than_zero, 
                             help="You need at least 1 targets to start tracking" if not more_than_zero else "Click to start tracking")
         if more_than_zero > 0:
-            n_picture = 16
             n = 5
             groups = []
             for i in range(0, len(st.session_state.targets), n):
