@@ -5,6 +5,7 @@ from personal_tracker.embedder.available_embedder_models import AvailableEmbedde
 from personal_tracker.metric.metric_type import MetricType
 from personal_tracker.tracker.tracker_config import TrackerConfig
 from personal_tracker.helpers import draw_bbox, draw_center_vertical_line
+from streamlit_server_state import server_state, server_state_lock
 
 st.set_page_config(
     page_title="Boombot - WebUI",
