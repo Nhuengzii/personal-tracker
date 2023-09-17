@@ -23,6 +23,7 @@ class HandTrigger:
         self.is_beckon = False
         self.duration_time = 0
         self.flag_start_time = False
+        
 
     def _has_results(self):
         return self.results.multi_hand_landmarks is not None
@@ -41,9 +42,9 @@ class HandTrigger:
             self.storage_frame.pop(0)
         self.storage_frame.append(frame)
     
-    def find_beckon(self, multi_hand_lms) -> bool:
+    def find_beckon(self, multi_hand_lms, time_now) -> bool:
         fingers = []
-        
+        flag_is_floded_down = False
         for hand_lms in multi_hand_lms:
             tip_x =  hand_lms.landmark[self.tiplist[0]].x
             mcp_x = hand_lms.landmark[self.mcplist[0]].x
@@ -57,19 +58,29 @@ class HandTrigger:
         total_fingers = fingers.count(1)
 
         if total_fingers <=  1:
-            flag_is_floded_down = True
+            if not flag_is_floded_down:
+                last_time_detectedd = time_now
+                flag_is_floded_down = True
+            else:
+                self.duration_time = time_now - last_time_detectedd
+                print("duration_time: ", duration_time)
+                
         else:
-            flag_is_floded_down = False
+            if self.duration_time <= 0.2 and flag_is_floded_down:
+                self.duration_time = 0
+                flag_is_floded_down = False
+                return True
+            else:
+                self.duration_time = 0
+                flag_is_floded_down = False
+                return False
+
+            
+
+
         return flag_is_floded_down
         
-
-    def get_center_of_frame(self, bbox: Tuple[int, int, int, int]) -> Tuple[int, int]:
-        center_x = (bbox[0] + bbox[2]) // 2
-        center_y = (bbox[1] + bbox[3]) // 2
-        center_coordinates = (center_x, center_y)
-        return center_coordinates
              
-    
     def find_target(self, multi_hand_lms, now_time) -> bool:
         fingers = []
         fingers_stop = []
@@ -128,12 +139,10 @@ class HandTrigger:
             duration_time = 0
             self.flag_start_stop = False
             last_time_detectedd = now_time
-            self.is_detect = True
+            self.is_detect = not self.is_detect
     
         return self.is_detect
         
-
-
     def find_stop(self, multi_hand_lms, time_to_stop=2,):
         fingers = []
         for hand_lms in multi_hand_lms:
