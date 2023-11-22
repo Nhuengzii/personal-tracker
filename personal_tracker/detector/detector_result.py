@@ -28,7 +28,7 @@ class DetectorResult:
     @property
     def bboxes(self) -> list[tuple[int, int, int, int]]:
         bboxes = self.results_boxes.xyxy.tolist()
-        return [tuple(map(int, bbox)) for bbox in bboxes]
+        return [(int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])) for bbox in bboxes]
     
     @property
     def confidences(self) -> list[float]:

@@ -8,7 +8,7 @@ import math
 from personal_tracker import PersonalTracker, TrackerConfig
 from personal_tracker.embedder.available_embedder_models import AvailableEmbedderModels
 from personal_tracker.helpers import draw_bbox, crop_image_from_bbox
-from personal_tracker.extentions.hand_triger import HandTriggerResult
+from personal_tracker.extentions.hand_triger import HandTrigger
 from personal_tracker.detector import Detector
 
 class VideoStreamWidget(object):

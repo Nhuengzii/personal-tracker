@@ -9,7 +9,8 @@ from personal_tracker.embedder.emebedder import Embedder
 class CLIPEmbedder(Embedder):
     def __init__(self) -> None:
         super().__init__()
-        self.model, self.preprocess = clip.load("ViT-B/32", device=self.device)
+        # self.model, self.preprocess = clip.load("ViT-B/32", device=self.device)
+        self.model = clip
 
     @torch.no_grad()
     def extract_feature(self, croped_image: MatLike) -> torch.Tensor:

@@ -1,1 +1,1 @@
-from hand_triger import HandTriggerResult
+from hand_triger import HandTrigger

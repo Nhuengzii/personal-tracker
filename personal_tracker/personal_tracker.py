@@ -3,7 +3,7 @@ import cv2
 from datetime import datetime
 from personal_tracker.detector.detector import Detector
 from personal_tracker.embedder.available_embedder_models import AvailableEmbedderModels
-from personal_tracker.embedder.clip_embedder import CLIPEmbedder
+# from personal_tracker.embedder.clip_embedder import CLIPEmbedder
 from personal_tracker.embedder.emebedder import Embedder
 from personal_tracker.metric import Metric
 from personal_tracker.metric.metric_type import MetricType
@@ -15,8 +15,8 @@ class PersonalTracker:
         self._detector = Detector()
         if config.embedder_model is None:
             self._embedder = None
-        elif config.embedder_model == AvailableEmbedderModels.CLIP:
-            self._embedder = CLIPEmbedder()
+        # elif config.embedder_model == AvailableEmbedderModels.CLIP:
+        #     self._embedder = CLIPEmbedder()
         else:
             self._embedder = Embedder(config.embedder_model)
         self.metric_type = config.metric_type

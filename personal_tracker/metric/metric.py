@@ -1,6 +1,5 @@
 import torch
 
-from personal_tracker.metric.cosine_similarity2 import CosineSimilarity2
 from .cosine_similarity import CosineSimilarity
 from .csem import CSEM
 from .euclidian import EuclideanDistance
@@ -18,8 +17,6 @@ class Metric:
             self._metric = EuclideanDistance()
         elif metric_type == MetricType.CSEM_DISTANCE:
             self._metric = CSEM()
-        elif metric_type == MetricType.COSINE_SIMILARITY2:
-            self._metric = CosineSimilarity2()
         else:
             raise NotImplementedError(f"Metric type {metric_type} is not implemented")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"

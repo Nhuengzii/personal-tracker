@@ -1,5 +1,4 @@
 import cv2
-import pafy
 from cv2.typing import MatLike
 import argparse
 import os
@@ -7,7 +6,7 @@ from personal_tracker.embedder.available_embedder_models import AvailableEmbedde
 from personal_tracker.metric.metric_type import MetricType
 
 from personal_tracker.personal_tracker import PersonalTracker
-from personal_tracker.tracker_config import TrackerConfig
+from personal_tracker import TrackerConfig
 
 
 def main(source: str | int, args):
